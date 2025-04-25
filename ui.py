@@ -291,30 +291,13 @@ class GameScreen:
         
         # Create stars of different sizes
         self.stars = []
-        for _ in range(150):  # More stars for a richer background
+        for _ in range(200):  # More stars for a richer background
             x = random.randint(0, 800)
             y = random.randint(0, 600)
             size = random.choice([1, 1, 1, 2, 2, 3])
             color = random.choice(['white', '#CCCCCC', '#999999', '#6666FF', '#9999FF', '#DDDDFF'])
             star = self.canvas.create_oval(x, y, x+size, y+size, fill=color, outline="")
             self.stars.append(star)
-        
-        # Create a few "distant galaxies" or nebulae
-        for _ in range(8):
-            x = random.randint(50, 750)
-            y = random.randint(50, 550)
-            size = random.randint(20, 60)
-            
-            # Create a soft glow effect for the nebula
-            colors = ['#6666FF', '#9966FF', '#CC66FF', '#FF66FF']
-            for i in range(4):
-                reduced_size = size - (i * 5)
-                if reduced_size > 0:
-                    self.canvas.create_oval(
-                        x - reduced_size/2, y - reduced_size/2, 
-                        x + reduced_size/2, y + reduced_size/2, 
-                        fill=colors[i], outline=""
-                    )
         
     def initialize_hud(self):
         """Initialize the Heads-Up Display (HUD)."""
