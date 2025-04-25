@@ -250,6 +250,12 @@ class GameScreen:
         self.player_width = 50  # Width of player ship
         self.key_states = {"left": False, "right": False}  # Track key states
         
+        # Shooting variables
+        self.bullets = []  # List to store bullet objects
+        self.last_shot_time = 0  # Timestamp of the last shot fired
+        self.bullet_cooldown = 300  # Cooldown in milliseconds (300ms = 0.3 seconds)
+        self.bullet_speed = 10  # Pixels per frame
+        
         # Create new canvas
         self.canvas = tk.Canvas(master, width=800, height=600, bg='black')
         self.canvas.pack(fill="both", expand=True)
@@ -441,6 +447,9 @@ class GameScreen:
         self.master.bind("<KeyRelease-A>", lambda event: self.set_key_state("left", False))
         self.master.bind("<KeyRelease-d>", lambda event: self.set_key_state("right", False))
         self.master.bind("<KeyRelease-D>", lambda event: self.set_key_state("right", False))
+        
+        # Bind space key for shooting
+        self.master.bind("<space>", self.shoot)
     
     def set_key_state(self, key, is_pressed):
         """Update the state of a key (pressed or released)."""
@@ -482,6 +491,9 @@ class GameScreen:
             # Update player position based on controls
             self.update_player_position()
             
+            # Update bullet positions
+            self.update_bullets()
+            
             # Other game logic will go here in future implementations
             
         # Schedule the next update (approx. 60 FPS)
@@ -506,6 +518,70 @@ class GameScreen:
         self.level += value
         self.canvas.itemconfig(self.level_text, text=f"Level: {self.level}")
     
+    def shoot(self, event=None):
+        """Create a bullet at the player's position."""
+        # Return early if the game is paused or over
+        if self.is_paused or not self.game_running:
+            return
+            
+        # Check if enough time has passed since the last shot (cooldown)
+        current_time = time.time() * 1000  # Convert to milliseconds
+        if current_time - self.last_shot_time < self.bullet_cooldown:
+            return  # Still on cooldown
+        
+        # Update the last shot timestamp
+        self.last_shot_time = current_time
+        
+        # Get the current ship coordinates
+        ship_coords = self.canvas.coords(self.player)
+        
+        # Calculate bullet starting position (top center of the ship)
+        # The first point of the ship polygon is the top point (ship_coords[0], ship_coords[1])
+        bullet_x = ship_coords[0]  # X-coordinate of the top of the ship
+        bullet_y = ship_coords[1]  # Y-coordinate of the top of the ship
+        
+        # Create the bullet
+        bullet = self.canvas.create_rectangle(
+            bullet_x - 2, bullet_y - 10,
+            bullet_x + 2, bullet_y,
+            fill="#FF0000",  # Red color
+            outline="#FF5555"  # Lighter red outline
+        )
+        
+        # Add bullet to the tracking list
+        self.bullets.append(bullet)
+        
+        # Optional: Add a small flash at the top of the ship
+        flash = self.canvas.create_oval(
+            bullet_x - 5, bullet_y - 5,
+            bullet_x + 5, bullet_y + 5,
+            fill="#FFFF00",  # Yellow flash
+            outline=""
+        )
+        
+        # Remove the flash after a short time
+        self.master.after(50, lambda: self.canvas.delete(flash))
+    
+    def update_bullets(self):
+        """Update the position of all bullets and remove those off screen."""
+        bullets_to_remove = []
+        
+        for bullet in self.bullets:
+            # Move bullet upward
+            self.canvas.move(bullet, 0, -self.bullet_speed)
+            
+            # Get the current bullet position
+            bullet_coords = self.canvas.coords(bullet)
+            
+            # Check if bullet is off screen (has moved beyond the top of the canvas)
+            if bullet_coords and bullet_coords[3] < 0:
+                bullets_to_remove.append(bullet)
+        
+        # Remove bullets that are off screen
+        for bullet in bullets_to_remove:
+            self.canvas.delete(bullet)
+            self.bullets.remove(bullet)
+    
     def game_over(self):
         """Handle game over state."""
         self.game_running = False
@@ -513,5 +589,10 @@ class GameScreen:
         # Cancel any scheduled animations/updates
         if hasattr(self, 'game_update_id'):
             self.master.after_cancel(self.game_update_id)
+        
+        # Clean up any remaining bullets
+        for bullet in self.bullets:
+            self.canvas.delete(bullet)
+        self.bullets = []
         
         # Game over logic will be implemented in feature/game-over-screen branch 
