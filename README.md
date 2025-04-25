@@ -2,7 +2,7 @@
 
 A modern reimagining of the classic Space Invaders arcade game, built with Python and Tkinter.
 
-![Galactic Defenders](https://github.com/yourusername/galacticdefendersv2/raw/main/screenshots/gameplay.png)
+![Galactic Defenders](https://github.com/ilan-uzan/galacticdefendersv2/raw/main/screenshots/gameplay.png)
 
 ## Project Overview
 
@@ -54,7 +54,7 @@ The game uses a blue-centric color palette designed to be visually appealing whi
 
 2. **Clone the repository**:
    ```
-   git clone https://github.com/yourusername/galacticdefendersv2.git
+   git clone https://github.com/ilan-uzan/galacticdefendersv2.git
    cd galacticdefendersv2
    ```
 
@@ -73,7 +73,7 @@ The game uses a blue-centric color palette designed to be visually appealing whi
 
 2. **Clone the repository**:
    ```
-   git clone https://github.com/yourusername/galacticdefendersv2.git
+   git clone https://github.com/ilan-uzan/galacticdefendersv2.git
    cd galacticdefendersv2
    ```
 
@@ -92,7 +92,7 @@ The game uses a blue-centric color palette designed to be visually appealing whi
 
 2. **Clone the repository**:
    ```
-   git clone https://github.com/yourusername/galacticdefendersv2.git
+   git clone https://github.com/ilan-uzan/galacticdefendersv2.git
    cd galacticdefendersv2
    ```
 
