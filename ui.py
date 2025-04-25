@@ -435,55 +435,11 @@ class GameScreen:
             width=1
         )
         
-        # Add glow effect under the ship
-        self.engine_glow = self.canvas.create_oval(
-            self.player_x - 12, ship_y - 5,
-            self.player_x + 12, ship_y + 10,
-            fill="#FF6600",  # Orange glow
-            outline="#FFAA00",  # Yellow outline
-            width=1
-        )
-        
-        # Add thruster animation
-        self.animate_thruster()
-        
-        # Check if objects were created successfully
-        if not self.player or not self.engine_glow:
-            print("WARNING: Failed to create player ship objects!")
+        # Check if object was created successfully
+        if not self.player:
+            print("WARNING: Failed to create player ship object!")
         else:
-            print("Player ship objects created successfully")
-    
-    def animate_thruster(self):
-        """Animate the thruster glow under the ship."""
-        if not self.game_running or self.is_paused:
-            return
-            
-        # Get current glow size
-        current_coords = self.canvas.coords(self.engine_glow)
-        
-        # Randomize the glow size slightly for a flame effect
-        size_change = random.uniform(0.8, 1.2)
-        center_x = (current_coords[0] + current_coords[2]) / 2
-        center_y = (current_coords[1] + current_coords[3]) / 2
-        width = (current_coords[2] - current_coords[0]) * size_change
-        height = (current_coords[3] - current_coords[1]) * size_change
-        
-        # Update glow coordinates
-        self.canvas.coords(
-            self.engine_glow,
-            center_x - width/2, center_y - height/2,
-            center_x + width/2, center_y + height/2
-        )
-        
-        # Cycle glow colors between orange and red
-        r = int(255 * random.uniform(0.9, 1.0))  # Mostly full red
-        g = int(140 * random.uniform(0.5, 1.0))  # Variable green (makes orange/yellow)
-        b = int(80 * random.uniform(0.1, 0.3))   # A bit of blue
-        glow_color = f"#{r:02x}{g:02x}{b:02x}"
-        self.canvas.itemconfig(self.engine_glow, fill=glow_color)
-        
-        # Schedule next animation frame
-        self.thruster_animation_id = self.master.after(100, self.animate_thruster)
+            print("Player ship object created successfully")
     
     def setup_controls(self):
         """Set up keyboard controls for the player ship."""
@@ -536,17 +492,6 @@ class GameScreen:
                 
             # Update ship polygon
             self.canvas.coords(self.player, *ship_coords)
-            
-            # Update engine glow position
-            glow_coords = self.canvas.coords(self.engine_glow)
-            glow_width = glow_coords[2] - glow_coords[0]
-            glow_height = glow_coords[3] - glow_coords[1]
-            
-            self.canvas.coords(
-                self.engine_glow,
-                self.player_x - glow_width/2, glow_coords[1],
-                self.player_x + glow_width/2, glow_coords[3]
-            )
     
     def update_game(self):
         """Update the game state and schedule the next update."""
@@ -583,8 +528,6 @@ class GameScreen:
         self.game_running = False
         
         # Cancel any scheduled animations/updates
-        if hasattr(self, 'thruster_animation_id'):
-            self.master.after_cancel(self.thruster_animation_id)
         if hasattr(self, 'game_update_id'):
             self.master.after_cancel(self.game_update_id)
         
