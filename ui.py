@@ -11,6 +11,11 @@ class SplashScreen:
     def __init__(self, master):
         """Initialize the splash screen with ASCII art and rainbow effect."""
         self.master = master
+        
+        # Remove any existing canvas
+        for widget in master.winfo_children():
+            widget.destroy()
+            
         self.canvas = tk.Canvas(master, width=800, height=600, bg='black')
         self.canvas.pack(fill="both", expand=True)
         
@@ -99,14 +104,14 @@ class SplashScreen:
             color_index += 1
             
         # Schedule next color cycle
-        self.master.after(150, self.cycle_colors)
+        self.color_cycle_id = self.master.after(150, self.cycle_colors)
             
     def blink_space_prompt(self):
         """Make the 'Press SPACE to start' text blink."""
         current_color = self.canvas.itemcget(self.space_text, "fill")
         new_color = "yellow" if current_color == "white" else "white"
         self.canvas.itemconfig(self.space_text, fill=new_color)
-        self.master.after(500, self.blink_space_prompt)
+        self.blink_id = self.master.after(500, self.blink_space_prompt)
         
     def start_game(self, event=None):
         """Transition from splash screen to player name entry."""
@@ -114,8 +119,10 @@ class SplashScreen:
         self.canvas.delete("all")
         
         # Remove animation callbacks
-        self.master.after_cancel(self.blink_space_prompt)
-        self.master.after_cancel(self.cycle_colors)
+        if hasattr(self, 'blink_id'):
+            self.master.after_cancel(self.blink_id)
+        if hasattr(self, 'color_cycle_id'):
+            self.master.after_cancel(self.color_cycle_id)
         
         # Unbind space key
         self.master.unbind("<space>")
@@ -205,6 +212,13 @@ class SplashScreen:
         # Clean up the current screen
         self.canvas.delete("all")
         
+        # Remove any existing bindings that might interfere
+        self.master.unbind("<Return>")
+        
+        # Destroy any existing widgets
+        for widget in self.canvas.winfo_children():
+            widget.destroy()
+            
         # Create the game screen
         game_screen = GameScreen(self.master, player_name)
 
@@ -214,6 +228,14 @@ class GameScreen:
         """Initialize the main game screen."""
         self.master = master
         self.player_name = player_name
+        
+        # Clear existing widgets and bindings
+        for widget in master.winfo_children():
+            widget.destroy()
+            
+        # Unbind any existing key bindings
+        for key in ['<space>', '<Left>', '<Right>', 'a', 'A', 'd', 'D', 'p', 'P']:
+            self.master.unbind(key)
         
         # Game state variables
         self.score = 0
@@ -228,7 +250,7 @@ class GameScreen:
         self.player_width = 50  # Width of player ship
         self.key_states = {"left": False, "right": False}  # Track key states
         
-        # Create the game canvas
+        # Create new canvas
         self.canvas = tk.Canvas(master, width=800, height=600, bg='black')
         self.canvas.pack(fill="both", expand=True)
         
@@ -238,17 +260,21 @@ class GameScreen:
         # Initialize HUD (Heads-Up Display)
         self.initialize_hud()
         
-        # Add pause/play buttons
-        self.create_pause_play_buttons()
-        
         # Create player spaceship
         self.create_player_ship()
+        
+        # Add pause/play buttons
+        self.create_pause_play_buttons()
         
         # Set up keyboard controls
         self.setup_controls()
         
         # Start the game loop
         self.update_game()
+        
+        # Debug info - print to console to confirm object creation
+        print(f"Player ship created at x={self.player_x}")
+        print(f"Game running state: {self.game_running}")
         
     def create_galaxy_background(self):
         """Create a galaxy-style starfield background."""
@@ -365,6 +391,9 @@ class GameScreen:
         self.master.bind('p', lambda event: self.toggle_pause())
         self.master.bind('P', lambda event: self.toggle_pause())
         
+        # Ensure the buttons are visible by bringing the frame to the front
+        pause_frame.lift()
+        
     def toggle_pause(self):
         """Toggle the pause state of the game."""
         self.is_paused = not self.is_paused
@@ -417,6 +446,12 @@ class GameScreen:
         
         # Add thruster animation
         self.animate_thruster()
+        
+        # Check if objects were created successfully
+        if not self.player or not self.engine_glow:
+            print("WARNING: Failed to create player ship objects!")
+        else:
+            print("Player ship objects created successfully")
     
     def animate_thruster(self):
         """Animate the thruster glow under the ship."""
@@ -448,7 +483,7 @@ class GameScreen:
         self.canvas.itemconfig(self.engine_glow, fill=glow_color)
         
         # Schedule next animation frame
-        self.master.after(100, self.animate_thruster)
+        self.thruster_animation_id = self.master.after(100, self.animate_thruster)
     
     def setup_controls(self):
         """Set up keyboard controls for the player ship."""
@@ -522,7 +557,7 @@ class GameScreen:
             # Other game logic will go here in future implementations
             
         # Schedule the next update (approx. 60 FPS)
-        self.master.after(16, self.update_game)
+        self.game_update_id = self.master.after(16, self.update_game)
     
     def update_score(self, points):
         """Update the player's score."""
@@ -546,4 +581,11 @@ class GameScreen:
     def game_over(self):
         """Handle game over state."""
         self.game_running = False
+        
+        # Cancel any scheduled animations/updates
+        if hasattr(self, 'thruster_animation_id'):
+            self.master.after_cancel(self.thruster_animation_id)
+        if hasattr(self, 'game_update_id'):
+            self.master.after_cancel(self.game_update_id)
+        
         # Game over logic will be implemented in feature/game-over-screen branch 
