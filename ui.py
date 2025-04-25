@@ -1363,7 +1363,7 @@ class GameScreen:
         
         # Bind space to restart with a more reliable approach
         self.master.bind("<space>", self.restart_game_safe)
-        
+    
     def restart_game_safe(self, event=None):
         """A safer version of restart_game to avoid freezing."""
         try:
