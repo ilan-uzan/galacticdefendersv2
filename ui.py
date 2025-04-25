@@ -197,23 +197,213 @@ class SplashScreen:
             self.master.after(2000, lambda: self.canvas.delete("error"))
             return
         
-        # TODO: Start the actual game with the player's name
-        print(f"Starting game for player: {player_name}")
+        # Launch the game screen with the player's name
+        self.launch_game_screen(player_name)
         
-        # For now, just show a placeholder message
+    def launch_game_screen(self, player_name):
+        """Launch the main game screen with the player's name."""
+        # Clean up the current screen
         self.canvas.delete("all")
-        self.canvas.create_text(
-            400, 300,
-            text=f"Welcome, {player_name}!\nGame implementation coming soon...",
-            fill="white",
-            font=("Courier", 20),
-            justify="center"
-        )
+        
+        # Create the game screen
+        game_screen = GameScreen(self.master, player_name)
 
-# This class will be implemented in future iterations
+
 class GameScreen:
     def __init__(self, master, player_name):
         """Initialize the main game screen."""
         self.master = master
         self.player_name = player_name
-        # TODO: Implement game mechanics 
+        
+        # Game state variables
+        self.score = 0
+        self.shields = 3
+        self.level = 1
+        self.is_paused = False
+        self.game_running = True
+        
+        # Create the game canvas
+        self.canvas = tk.Canvas(master, width=800, height=600, bg='black')
+        self.canvas.pack(fill="both", expand=True)
+        
+        # Create the starfield background
+        self.create_galaxy_background()
+        
+        # Initialize HUD (Heads-Up Display)
+        self.initialize_hud()
+        
+        # Add pause/play buttons
+        self.create_pause_play_buttons()
+        
+        # Start the game loop
+        self.update_game()
+        
+    def create_galaxy_background(self):
+        """Create a galaxy-style starfield background."""
+        # Draw a dark blue to purple gradient for space background
+        for y in range(0, 600, 2):
+            # Calculate color gradient from dark blue at top to purple at bottom
+            r = int(10 + (y / 600) * 30)  # Dark blue to slightly less dark blue
+            g = int(10 + (y / 600) * 10)  # Very little green
+            b = int(40 + (y / 600) * 30)  # More blue/purple
+            color = f'#{r:02x}{g:02x}{b:02x}'
+            
+            # Draw horizontal line with gradient color
+            self.canvas.create_line(0, y, 800, y, fill=color)
+        
+        # Create stars of different sizes
+        self.stars = []
+        for _ in range(150):  # More stars for a richer background
+            x = random.randint(0, 800)
+            y = random.randint(0, 600)
+            size = random.choice([1, 1, 1, 2, 2, 3])
+            color = random.choice(['white', '#CCCCCC', '#999999', '#6666FF', '#9999FF', '#DDDDFF'])
+            star = self.canvas.create_oval(x, y, x+size, y+size, fill=color, outline="")
+            self.stars.append(star)
+        
+        # Create a few "distant galaxies" or nebulae
+        for _ in range(8):
+            x = random.randint(50, 750)
+            y = random.randint(50, 550)
+            size = random.randint(20, 60)
+            
+            # Create a soft glow effect for the nebula
+            colors = ['#6666FF', '#9966FF', '#CC66FF', '#FF66FF']
+            for i in range(4):
+                reduced_size = size - (i * 5)
+                if reduced_size > 0:
+                    self.canvas.create_oval(
+                        x - reduced_size/2, y - reduced_size/2, 
+                        x + reduced_size/2, y + reduced_size/2, 
+                        fill=colors[i], outline=""
+                    )
+        
+    def initialize_hud(self):
+        """Initialize the Heads-Up Display (HUD)."""
+        # Create HUD background - black bar at the top
+        self.hud_bg = self.canvas.create_rectangle(
+            0, 0, 800, 40, fill='#000000', outline=""
+        )
+        
+        # Create score text
+        self.score_text = self.canvas.create_text(
+            100, 20, 
+            text=f"Score: {self.score:04d}", 
+            fill="#00FFFF",  # Cyan
+            font=("Courier", 16, "bold")
+        )
+        
+        # Create shields text
+        self.shields_text = self.canvas.create_text(
+            400, 20, 
+            text=f"Shields: {self.shields}", 
+            fill="#FF00FF",  # Magenta
+            font=("Courier", 16, "bold")
+        )
+        
+        # Create level text
+        self.level_text = self.canvas.create_text(
+            700, 20, 
+            text=f"Level: {self.level}", 
+            fill="#FFFF00",  # Yellow
+            font=("Courier", 16, "bold")
+        )
+        
+    def create_pause_play_buttons(self):
+        """Create pause and play buttons."""
+        # Create pause button frame
+        pause_frame = tk.Frame(self.master, bg='black', bd=0, highlightthickness=0)
+        pause_frame.place(x=750, y=45)
+        
+        # Create pause button
+        self.pause_button = tk.Button(
+            pause_frame,
+            text="⏸️",  # Unicode pause symbol
+            command=self.toggle_pause,
+            font=("Arial", 12),
+            bg='#333333',
+            fg='#00FF00',
+            activebackground='#555555',
+            activeforeground='#FFFFFF',
+            relief=tk.FLAT,
+            bd=0,
+            padx=2,
+            pady=2
+        )
+        self.pause_button.pack()
+        
+        # Create play button (initially hidden)
+        self.play_button = tk.Button(
+            pause_frame,
+            text="▶️",  # Unicode play symbol
+            command=self.toggle_pause,
+            font=("Arial", 12),
+            bg='#333333',
+            fg='#00FF00',
+            activebackground='#555555',
+            activeforeground='#FFFFFF',
+            relief=tk.FLAT,
+            bd=0,
+            padx=2,
+            pady=2
+        )
+        # Don't pack the play button yet, it will be shown when game is paused
+        
+        # Also bind 'p' key for pause/play
+        self.master.bind('p', lambda event: self.toggle_pause())
+        self.master.bind('P', lambda event: self.toggle_pause())
+        
+    def toggle_pause(self):
+        """Toggle the pause state of the game."""
+        self.is_paused = not self.is_paused
+        
+        if self.is_paused:
+            # Display "PAUSED" text
+            self.pause_text = self.canvas.create_text(
+                400, 300,
+                text="PAUSED",
+                fill="#FF0000",
+                font=("Courier", 36, "bold")
+            )
+            # Switch buttons
+            self.pause_button.pack_forget()
+            self.play_button.pack()
+        else:
+            # Remove "PAUSED" text
+            self.canvas.delete(self.pause_text)
+            # Switch buttons
+            self.play_button.pack_forget()
+            self.pause_button.pack()
+            
+    def update_game(self):
+        """Update the game state and schedule the next update."""
+        if self.game_running and not self.is_paused:
+            # Game logic will go here in future implementations
+            pass
+            
+        # Schedule the next update (approx. 60 FPS)
+        self.master.after(16, self.update_game)
+    
+    def update_score(self, points):
+        """Update the player's score."""
+        self.score += points
+        self.canvas.itemconfig(self.score_text, text=f"Score: {self.score:04d}")
+    
+    def update_shields(self, value):
+        """Update the player's shields."""
+        self.shields = max(0, self.shields + value)  # Prevent negative shields
+        self.canvas.itemconfig(self.shields_text, text=f"Shields: {self.shields}")
+        
+        # Check for game over
+        if self.shields <= 0 and self.game_running:
+            self.game_over()
+    
+    def update_level(self, value=1):
+        """Update the current level."""
+        self.level += value
+        self.canvas.itemconfig(self.level_text, text=f"Level: {self.level}")
+    
+    def game_over(self):
+        """Handle game over state."""
+        self.game_running = False
+        # Game over logic will be implemented in feature/game-over-screen branch 
