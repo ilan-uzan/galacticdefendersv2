@@ -222,6 +222,12 @@ class GameScreen:
         self.is_paused = False
         self.game_running = True
         
+        # Player movement variables
+        self.player_x = 400  # Initial x position centered
+        self.player_speed = 7  # Speed of player movement
+        self.player_width = 50  # Width of player ship
+        self.key_states = {"left": False, "right": False}  # Track key states
+        
         # Create the game canvas
         self.canvas = tk.Canvas(master, width=800, height=600, bg='black')
         self.canvas.pack(fill="both", expand=True)
@@ -234,6 +240,12 @@ class GameScreen:
         
         # Add pause/play buttons
         self.create_pause_play_buttons()
+        
+        # Create player spaceship
+        self.create_player_ship()
+        
+        # Set up keyboard controls
+        self.setup_controls()
         
         # Start the game loop
         self.update_game()
@@ -375,11 +387,139 @@ class GameScreen:
             self.play_button.pack_forget()
             self.pause_button.pack()
             
+    def create_player_ship(self):
+        """Create the player's spaceship."""
+        # Ship coordinates - centered at bottom of screen
+        ship_y = 550  # Position from top (near bottom of screen)
+        
+        # Create a sleek, modern spaceship using polygon
+        # The design is inspired by classic arcade shooters but with a more refined look
+        self.player = self.canvas.create_polygon(
+            self.player_x, ship_y - 30,  # Top point
+            self.player_x - 25, ship_y,  # Bottom left
+            self.player_x - 15, ship_y - 10,  # Inner left
+            self.player_x, ship_y - 15,  # Inner bottom
+            self.player_x + 15, ship_y - 10,  # Inner right
+            self.player_x + 25, ship_y,  # Bottom right
+            fill="#00FFAA",  # Cyan-green
+            outline="#FFFFFF",  # White outline
+            width=1
+        )
+        
+        # Add glow effect under the ship
+        self.engine_glow = self.canvas.create_oval(
+            self.player_x - 12, ship_y - 5,
+            self.player_x + 12, ship_y + 10,
+            fill="#FF6600",  # Orange glow
+            outline="#FFAA00",  # Yellow outline
+            width=1
+        )
+        
+        # Add thruster animation
+        self.animate_thruster()
+    
+    def animate_thruster(self):
+        """Animate the thruster glow under the ship."""
+        if not self.game_running or self.is_paused:
+            return
+            
+        # Get current glow size
+        current_coords = self.canvas.coords(self.engine_glow)
+        
+        # Randomize the glow size slightly for a flame effect
+        size_change = random.uniform(0.8, 1.2)
+        center_x = (current_coords[0] + current_coords[2]) / 2
+        center_y = (current_coords[1] + current_coords[3]) / 2
+        width = (current_coords[2] - current_coords[0]) * size_change
+        height = (current_coords[3] - current_coords[1]) * size_change
+        
+        # Update glow coordinates
+        self.canvas.coords(
+            self.engine_glow,
+            center_x - width/2, center_y - height/2,
+            center_x + width/2, center_y + height/2
+        )
+        
+        # Cycle glow colors between orange and red
+        r = int(255 * random.uniform(0.9, 1.0))  # Mostly full red
+        g = int(140 * random.uniform(0.5, 1.0))  # Variable green (makes orange/yellow)
+        b = int(80 * random.uniform(0.1, 0.3))   # A bit of blue
+        glow_color = f"#{r:02x}{g:02x}{b:02x}"
+        self.canvas.itemconfig(self.engine_glow, fill=glow_color)
+        
+        # Schedule next animation frame
+        self.master.after(100, self.animate_thruster)
+    
+    def setup_controls(self):
+        """Set up keyboard controls for the player ship."""
+        # Bind key press events
+        self.master.bind("<Left>", lambda event: self.set_key_state("left", True))
+        self.master.bind("<Right>", lambda event: self.set_key_state("right", True))
+        self.master.bind("a", lambda event: self.set_key_state("left", True))
+        self.master.bind("A", lambda event: self.set_key_state("left", True))
+        self.master.bind("d", lambda event: self.set_key_state("right", True))
+        self.master.bind("D", lambda event: self.set_key_state("right", True))
+        
+        # Bind key release events
+        self.master.bind("<KeyRelease-Left>", lambda event: self.set_key_state("left", False))
+        self.master.bind("<KeyRelease-Right>", lambda event: self.set_key_state("right", False))
+        self.master.bind("<KeyRelease-a>", lambda event: self.set_key_state("left", False))
+        self.master.bind("<KeyRelease-A>", lambda event: self.set_key_state("left", False))
+        self.master.bind("<KeyRelease-d>", lambda event: self.set_key_state("right", False))
+        self.master.bind("<KeyRelease-D>", lambda event: self.set_key_state("right", False))
+    
+    def set_key_state(self, key, is_pressed):
+        """Update the state of a key (pressed or released)."""
+        self.key_states[key] = is_pressed
+    
+    def update_player_position(self):
+        """Update the player's position based on key states."""
+        # Skip update if game is paused
+        if self.is_paused:
+            return
+            
+        # Calculate movement based on key states
+        dx = 0
+        if self.key_states["left"]:
+            dx -= self.player_speed
+        if self.key_states["right"]:
+            dx += self.player_speed
+            
+        # Apply movement with screen boundary check
+        new_x = self.player_x + dx
+        
+        # Screen boundaries with padding (half the ship width)
+        if new_x - self.player_width/2 > 0 and new_x + self.player_width/2 < 800:
+            self.player_x = new_x
+            
+            # Update ship position
+            ship_coords = self.canvas.coords(self.player)
+            
+            # Translate all coordinates by dx
+            for i in range(0, len(ship_coords), 2):
+                ship_coords[i] += dx
+                
+            # Update ship polygon
+            self.canvas.coords(self.player, *ship_coords)
+            
+            # Update engine glow position
+            glow_coords = self.canvas.coords(self.engine_glow)
+            glow_width = glow_coords[2] - glow_coords[0]
+            glow_height = glow_coords[3] - glow_coords[1]
+            
+            self.canvas.coords(
+                self.engine_glow,
+                self.player_x - glow_width/2, glow_coords[1],
+                self.player_x + glow_width/2, glow_coords[3]
+            )
+    
     def update_game(self):
         """Update the game state and schedule the next update."""
         if self.game_running and not self.is_paused:
-            # Game logic will go here in future implementations
-            pass
+            # Update player position based on controls
+            self.update_player_position()
+            
+            # Other game logic will go here in future implementations
             
         # Schedule the next update (approx. 60 FPS)
         self.master.after(16, self.update_game)
