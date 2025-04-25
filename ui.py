@@ -7,6 +7,7 @@ import random
 import time
 from functools import partial
 import math
+from leaderboard import LeaderboardManager
 
 class SplashScreen:
     def __init__(self, master):
@@ -232,6 +233,9 @@ class GameScreen:
         self.player_name = player_name
         self.width = 800
         self.height = 600
+        
+        # Initialize leaderboard manager
+        self.leaderboard = LeaderboardManager()
         
         # Clear existing widgets and bindings
         for widget in master.winfo_children():
@@ -1242,6 +1246,18 @@ class GameScreen:
         # Set game running to false
         self.game_running = False
         
+        # Save score to leaderboard
+        self.leaderboard.add_score(self.player_name, self.score, self.level)
+        
+        # Get player rank
+        player_rank = self.leaderboard.get_player_rank(self.player_name, self.score)
+        
+        # Get a random space fact
+        space_fact = self.leaderboard.get_random_space_fact()
+        
+        # Get top 5 scores
+        top_scores = self.leaderboard.get_top_scores(5)
+        
         # Cancel any scheduled animations/updates
         if hasattr(self, 'game_update_id'):
             self.master.after_cancel(self.game_update_id)
@@ -1264,24 +1280,81 @@ class GameScreen:
         
         # Show game over message with blue instead of red
         self.canvas.create_text(
-            400, 300,
+            400, 150,
             text=game_over_msg,
             fill="#6666FF",  # Blue text instead of red
             font=("Courier", 36, "bold")
         )
         
+        # Show player score
         self.canvas.create_text(
-            400, 350,
+            400, 200,
             text=f"Final Score: {self.score}",
             fill="#FFFFFF",
             font=("Courier", 24)
         )
         
+        # Show player rank
         self.canvas.create_text(
-            400, 400,
+            400, 230,
+            text=f"Rank: #{player_rank}",
+            fill="#00FFAA",
+            font=("Courier", 18)
+        )
+        
+        # Show space fact header
+        self.canvas.create_text(
+            400, 270,
+            text="SPACE FACT:",
+            fill="#00FFFF",
+            font=("Courier", 14, "bold")
+        )
+        
+        # Show space fact
+        fact_text = self.canvas.create_text(
+            400, 295,
+            text=space_fact,
+            fill="#CCCCFF",
+            font=("Courier", 12),
+            width=600,  # Wrap text if needed
+            justify=tk.CENTER
+        )
+        
+        # Draw a separator line
+        self.canvas.create_line(200, 320, 600, 320, fill="#444444", width=2)
+        
+        # Leaderboard title
+        self.canvas.create_text(
+            400, 340,
+            text="TOP SCORES",
+            fill="#00FF88",
+            font=("Courier", 16, "bold")
+        )
+        
+        # Display leaderboard entries
+        y_pos = 370
+        for i, (name, score, level, date) in enumerate(top_scores):
+            # Highlight the current player's score
+            is_player = name == self.player_name and score == self.score
+            color = "#FFFF00" if is_player else "#FFFFFF"
+            
+            # Format the leaderboard entry
+            entry_text = f"{i+1}. {name}: {score} pts (Level {level})"
+            
+            self.canvas.create_text(
+                400, y_pos,
+                text=entry_text,
+                fill=color,
+                font=("Courier", 14)
+            )
+            y_pos += 25
+        
+        # Play again prompt
+        self.canvas.create_text(
+            400, 550,
             text="Press SPACE to play again",
             fill="#00FF00",
-            font=("Courier", 18)
+            font=("Courier", 16)
         )
         
         # Make sure the spaceship and barriers don't remain
@@ -1296,6 +1369,10 @@ class GameScreen:
         try:
             # Try to completely reset the game UI
             self.canvas.delete("all")
+            
+            # Store the player name and leaderboard for reuse
+            player_name = self.player_name
+            leaderboard = self.leaderboard
             
             # Reset game state
             self.game_running = True
@@ -1323,6 +1400,10 @@ class GameScreen:
             self.stars = []
             self.barriers = []
             self.barrier_blocks = []
+            
+            # Restore player name and leaderboard
+            self.player_name = player_name
+            self.leaderboard = leaderboard
             
             # Recreate the game elements
             self.create_galaxy_background()
