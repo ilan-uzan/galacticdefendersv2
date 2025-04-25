@@ -1367,6 +1367,13 @@ class GameScreen:
     def restart_game_safe(self, event=None):
         """A safer version of restart_game to avoid freezing."""
         try:
+            # Cancel any scheduled animations or updates to avoid stacking game loops
+            for after_id in self.master.tk.call('after', 'info'):
+                try:
+                    self.master.after_cancel(after_id)
+                except:
+                    pass
+            
             # Try to completely reset the game UI
             self.canvas.delete("all")
             
@@ -1389,21 +1396,52 @@ class GameScreen:
             self.move_left = False
             self.move_right = False
             
+            # Reset player speed to initial value
+            self.player_speed = 8
+            
+            # Reset bullet speeds to initial values
+            self.player_bullet_speed = 10
+            self.enemy_bullet_speed = 6
+            
+            # Reset shot cooldown times
+            self.shot_cooldown = 250
+            self.enemy_shot_cooldown = 1000
+            self.last_shot_time = 0
+            self.enemy_last_shot_time = 0
+            
             # Reset all game elements
             self.bullets = []
             self.enemy_bullets = []
             self.enemies = []
+            
+            # Reset enemy movement parameters
             self.enemy_speed = 3
             self.enemy_direction = 1
             self.enemy_move_timer = 0
             self.enemy_move_delay = 25
+            self.enemy_descent_distance = 25
+            self.enemy_rows = 5
+            self.enemy_cols = 10
+            
+            # Reset other elements
             self.stars = []
             self.barriers = []
             self.barrier_blocks = []
+            self.particles = []
+            
+            # Reset timing variables
+            self.level_up_time = time.time()
             
             # Restore player name and leaderboard
             self.player_name = player_name
             self.leaderboard = leaderboard
+            
+            # Clear any scheduled 'after' events
+            if hasattr(self, 'game_update_id') and self.game_update_id:
+                try:
+                    self.master.after_cancel(self.game_update_id)
+                except:
+                    pass
             
             # Recreate the game elements
             self.create_galaxy_background()
@@ -1417,14 +1455,64 @@ class GameScreen:
             # Set up controls again
             self.setup_controls()
             
-            # Start the game loop
-            self.update_game()
+            # Reset any flashing state
+            self.is_flashing = False
+            
+            # Small delay before starting the game loop to ensure everything is initialized
+            self.master.after(50, self.start_fresh_game_loop)
             
         except Exception as e:
             # Fallback if anything goes wrong
             print(f"Error during restart: {e}")
             # Create a new game screen as a last resort
             self.master.after(100, lambda: GameScreen(self.master, self.player_name))
+            
+    def start_fresh_game_loop(self):
+        """Start a fresh game loop with proper timing."""
+        # Ensure we don't have stacked game loops
+        if hasattr(self, 'game_update_id') and self.game_update_id:
+            try:
+                self.master.after_cancel(self.game_update_id)
+            except:
+                pass
+                
+        # Start the game loop with a fresh timer
+        self.last_update_time = time.time()
+        self.game_update_id = self.master.after(16, self.update_game)
+        
+    def update_game(self):
+        """Update the game state and schedule the next update."""
+        try:
+            if self.game_running and not self.is_paused:
+                # Clean up any stray dots or lines that might be showing
+                self.clean_unwanted_items()
+                
+                # Update player position based on controls
+                self.update_player_position()
+                
+                # Update bullet positions
+                self.update_bullets()
+                
+                # Update enemy positions
+                self.update_enemies()
+                
+                # Check for collisions
+                self.check_collisions()
+                
+                # Handle enemy shooting
+                self.enemy_shoot()
+                
+                # Update enemy bullets
+                self.update_enemy_bullets()
+                
+                # Update special effects
+                self._update_special_effects()
+        except Exception as e:
+            print(f"Error in game loop: {e}")
+            
+        # Schedule the next update (approx. 60 FPS)
+        if hasattr(self, 'master') and self.master:
+            self.game_update_id = self.master.after(16, self.update_game)
     
     def enemy_shoot(self):
         """Randomly select enemies to shoot."""
