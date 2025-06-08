@@ -2,7 +2,9 @@
 
 A modern reimagining of the classic Space Invaders arcade game, built with Python and Tkinter.
 
-![Galactic Defenders](https://github.com/ilan-uzan/galacticdefendersv2/raw/main/screenshots/gameplay.png)
+![Screenshot 2025-06-08 at 18 47 12](https://github.com/user-attachments/assets/17676d2c-de53-450a-bbae-8853361bd9f8)
+
+
 
 ## Project Overview
 
